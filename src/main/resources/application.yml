@@ -1,0 +1,97 @@
+spring:
+  application:
+    name: dns-server
+
+  # R2DBC 响应式数据库配置
+  r2dbc:
+    url: r2dbc:h2:mem:///testdb?options=DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+
+  # SQL初始化配置
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+  # H2 数据库控制台（用于调试）
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.npc2048.dns: DEBUG
+    io.r2dbc.h2: DEBUG
+
+# 服务器配置
+server:
+  port: 5381
+
+# 自定义配置
+dns:
+  auth-path: /manage/**
+  auth:
+    # DNS查询是否需要鉴权（默认false，保持向后兼容）
+    require-for-dns-queries: false
+    # 管理员用户列表（硬编码，第一版够用了）
+    admin-users:
+      - admin
+
+  # DNS 服务器配置
+  # 监听端口（需要 root 权限才能监听 53 端口）
+  listen-port: 5354
+  # 默认上游 DNS 超时时间（毫秒）
+  default-timeout: 5000
+  # 重试次数
+  retry-count: 3
+  # 缓存最大条目数
+  cache-max-size: 10000
+  # 缓存默认 TTL（秒）
+  cache-default-ttl: 300
+  # 是否启用缓存
+  cache-enabled: true
+  # 是否启用查询日志
+  query-log-enabled: true
+
+  # 上游 DNS 服务器配置
+  upstream-dns:
+    - address: 8.8.8.8
+      port: 53
+      timeout: 5000
+      use-proxy: false
+      enabled: true
+      priority: 1
+    - address: 8.8.4.4
+      port: 53
+      timeout: 5000
+      use-proxy: false
+      enabled: true
+      priority: 2
+    - address: 114.114.114.114
+      port: 53
+      timeout: 5000
+      use-proxy: false
+      enabled: true
+      priority: 3
+
+# Sa-Token 配置
+sa-token:
+  # token名称（也是cookie名称）
+  token-name: satoken
+  # token有效期，单位：秒（默认30天）
+  timeout: 2592000
+  # token临时有效期（指定时间内无操作就过期，单位：秒）
+  active-timeout: -1
+  # 是否允许同一账号多地同时登录（为true时允许一起登录，为false时新登录挤掉旧登录）
+  is-concurrent: true
+  # 在多人登录同一账号时，是否共用一个token（为true时所有登录共用一个token，为false时每次登录新建一个token）
+  is-share: true
+  # token风格（可选：uuid、simple-uuid、random-32、random-64、random-128、tik）
+  token-style: uuid
+  # 是否输出操作日志
+  is-log: true
+
