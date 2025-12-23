@@ -7,7 +7,6 @@ import com.npc2048.dns.service.ManageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Mono;
 
 /**
  * 管理控制器
@@ -29,10 +28,13 @@ public class ManageController {
      * GET /api/manage/auth-config
      */
     @GetMapping("/auth-config")
-    public Mono<SaResult> getAuthConfig() {
-        return manageService.getAuthConfig()
-                .map(config -> SaResult.data(config))
-                .onErrorResume(e -> Mono.just(SaResult.error(e.getMessage())));
+    public SaResult getAuthConfig() {
+        try {
+            return SaResult.data(manageService.getAuthConfig());
+        } catch (Exception e) {
+            log.error("获取鉴权配置失败", e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
@@ -40,10 +42,14 @@ public class ManageController {
      * PUT /api/manage/auth-config
      */
     @PutMapping("/auth-config")
-    public Mono<SaResult> updateAuthConfig(@RequestBody AuthConfigUpdateRequest request) {
-        return manageService.updateAuthConfig(request)
-                .thenReturn(SaResult.ok("配置更新成功"))
-                .onErrorResume(e -> Mono.just(SaResult.error(e.getMessage())));
+    public SaResult updateAuthConfig(@RequestBody AuthConfigUpdateRequest request) {
+        try {
+            manageService.updateAuthConfig(request);
+            return SaResult.ok("配置更新成功");
+        } catch (Exception e) {
+            log.error("更新鉴权配置失败", e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
@@ -51,7 +57,7 @@ public class ManageController {
      * GET /api/manage/health
      */
     @GetMapping("/health")
-    public Mono<SaResult> health() {
-        return Mono.just(SaResult.ok("管理服务正常"));
+    public SaResult health() {
+        return SaResult.ok("管理服务正常");
     }
 }

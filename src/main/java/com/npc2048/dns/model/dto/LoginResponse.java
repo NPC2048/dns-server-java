@@ -1,6 +1,8 @@
 package com.npc2048.dns.model.dto;
 
+import jakarta.annotation.Nonnull;
 import lombok.Data;
+import lombok.NonNull;
 
 /**
  * 登录响应DTO

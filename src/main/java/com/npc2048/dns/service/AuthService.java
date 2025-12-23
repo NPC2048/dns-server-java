@@ -1,5 +1,6 @@
 package com.npc2048.dns.service;
 
+import cn.dev33.satoken.stp.SaTokenInfo;
 import cn.dev33.satoken.stp.StpUtil;
 import com.npc2048.dns.config.AuthConfig;
 import com.npc2048.dns.model.dto.LoginRequest;
@@ -7,7 +8,7 @@ import com.npc2048.dns.model.dto.LoginResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,8 +29,10 @@ public class AuthService {
 
     private final AuthConfig authConfig;
 
-    // 硬编码用户，第一版够用了
-    // 格式：username -> password
+    /**
+     * 硬编码用户，第一版够用了
+     * 格式：username -> password
+     */
     private static final Map<String, String> USERS = new HashMap<>();
 
     static {
@@ -43,54 +46,49 @@ public class AuthService {
      * 用户登录
      * 就这么简单，不要搞复杂
      */
-    public Mono<LoginResponse> login(LoginRequest request) {
-        return Mono.fromCallable(() -> {
-            String username = request.getUsername();
-            String password = request.getPassword();
+    public LoginResponse login(HttpServletRequest request, LoginRequest loginRequest) {
+        String username = loginRequest.getUsername();
+        String password = loginRequest.getPassword();
 
-            // 验证用户名密码
-            if (!USERS.containsKey(username) || !USERS.get(username).equals(password)) {
-                throw new RuntimeException("用户名或密码错误");
-            }
+        // 验证用户名密码
+        if (!USERS.containsKey(username) || !USERS.get(username).equals(password)) {
+            throw new RuntimeException("用户名或密码错误");
+        }
 
-            // 使用sa-token登录
-            StpUtil.login(username);
+        // 使用sa-token登录
+        StpUtil.login(username);
 
-            // 获取token
-            String token = StpUtil.getTokenValue();
+        // 获取token
+        SaTokenInfo tokenInfo = StpUtil.getTokenInfo();
+        log.info("tokenInfo: {}", tokenInfo);
 
-            // 检查是否是管理员
-            boolean isAdmin = authConfig.isAdmin(username);
+        // 检查是否是管理员
+        boolean isAdmin = authConfig.isAdmin(username);
 
-            log.info("用户登录成功: {}, 管理员: {}", username, isAdmin);
-            return new LoginResponse(token, username, isAdmin);
-        });
+        log.info("用户登录成功: {}, 管理员: {}", username, isAdmin);
+        return new LoginResponse(tokenInfo.getTokenValue(), username, isAdmin);
     }
 
     /**
      * 用户登出
      */
-    public Mono<Void> logout() {
-        return Mono.fromRunnable(() -> {
-            StpUtil.logout();
-            log.info("用户登出");
-        });
+    public void logout() {
+        StpUtil.logout();
+        log.info("用户登出");
     }
 
     /**
      * 获取当前用户信息
      */
-    public Mono<LoginResponse> getCurrentUser() {
-        return Mono.fromCallable(() -> {
-            if (!StpUtil.isLogin()) {
-                throw new RuntimeException("用户未登录");
-            }
+    public LoginResponse getCurrentUser() {
+        if (!StpUtil.isLogin()) {
+            throw new RuntimeException("用户未登录");
+        }
 
-            String username = StpUtil.getLoginIdAsString();
-            String token = StpUtil.getTokenValue();
-            boolean isAdmin = authConfig.isAdmin(username);
+        String username = StpUtil.getLoginIdAsString();
+        String token = StpUtil.getTokenValue();
+        boolean isAdmin = authConfig.isAdmin(username);
 
-            return new LoginResponse(token, username, isAdmin);
-        });
+        return new LoginResponse(token, username, isAdmin);
     }
 }

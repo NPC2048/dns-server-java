@@ -1,19 +1,20 @@
 package com.npc2048.dns.service;
 
-import com.npc2048.dns.model.DnsQueryRecord;
-import com.npc2048.dns.repository.DnsQueryRecordRepository;
+import com.npc2048.dns.model.entity.QueryRecord;
+import com.npc2048.dns.repository.h2.DnsQueryRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.List;
 
 /**
- * DNS查询记录服务（响应式实现）
+ * DNS查询记录服务
  *
- * @author yuelong.liang
+ * @author Linus Torvalds (通过 Claude Code)
  */
 @Slf4j
 @Service
@@ -23,70 +24,66 @@ public class DnsQueryRecordService {
     private final DnsQueryRecordRepository repository;
 
     /**
-     * 创建新的查询记录（响应式）
+     * 创建新的查询记录
      */
-    public Mono<DnsQueryRecord> createRecord(DnsQueryRecord record) {
+    public QueryRecord createRecord(QueryRecord record) {
         if (record.getQueryTime() == null) {
-            record.setQueryTime(LocalDateTime.now());
+            record.setQueryTime(Instant.now().toEpochMilli());
         }
-        log.debug("Creating DNS query record: {}", record.getDomain());
-        return repository.save(record)
-                .doOnSuccess(saved -> log.info("Saved DNS query record with ID: {}", saved.getId()));
+        log.debug("创建DNS查询记录: {}", record.getDomain());
+        QueryRecord saved = repository.save(record);
+        log.info("保存DNS查询记录成功，ID: {}", saved.getId());
+        return saved;
     }
 
     /**
-     * 查询所有记录（响应式流）
+     * 分页查询所有记录
      */
-    public Flux<DnsQueryRecord> getAllRecords() {
-        log.debug("Fetching all DNS query records");
-        return repository.findAll();
+    public Page<QueryRecord> getAllRecords(Pageable pageable) {
+        log.debug("获取所有DNS查询记录");
+        return repository.findAllByOrderByQueryTimeDesc(pageable);
     }
 
     /**
      * 根据ID查询单条记录
      */
-    public Mono<DnsQueryRecord> getRecordById(Long id) {
-        log.debug("Fetching DNS query record by ID: {}", id);
-        return repository.findById(id)
-                .doOnNext(record -> log.debug("Found record: {}", record.getDomain()))
-                .switchIfEmpty(Mono.defer(() -> {
-                    log.warn("DNS query record not found with ID: {}", id);
-                    return Mono.empty();
-                }));
+    public QueryRecord getRecordById(Long id) {
+        log.debug("根据ID查询DNS记录: {}", id);
+        return repository.findById(id).orElse(null);
     }
 
     /**
      * 根据域名查询记录
      */
-    public Flux<DnsQueryRecord> getRecordsByDomain(String domain) {
-        log.debug("Fetching DNS query records for domain: {}", domain);
-        return repository.findByDomain(domain);
+    public Page<QueryRecord> getRecordsByDomain(String domain, Pageable pageable) {
+        log.debug("根据域名查询记录: {}", domain);
+        return repository.findByDomainContainingOrderByQueryTimeDesc(domain, pageable);
     }
 
     /**
      * 根据缓存命中状态查询记录
      */
-    public Flux<DnsQueryRecord> getRecordsByCacheHit(Boolean cacheHit) {
-        log.debug("Fetching DNS query records with cache hit: {}", cacheHit);
-        return repository.findByCacheHit(cacheHit);
+    public Page<QueryRecord> getRecordsByCacheHit(Boolean cacheHit, Pageable pageable) {
+        log.debug("根据缓存命中状态查询记录: {}", cacheHit);
+        return repository.findByCacheHit(cacheHit, pageable);
     }
 
     /**
      * 删除记录
      */
-    public Mono<Void> deleteRecord(Long id) {
-        log.debug("Deleting DNS query record with ID: {}", id);
-        return repository.deleteById(id)
-                .doOnSuccess(v -> log.info("Deleted DNS query record with ID: {}", id));
+    public void deleteRecord(Long id) {
+        log.debug("删除DNS查询记录: {}", id);
+        repository.deleteById(id);
+        log.info("删除DNS查询记录成功，ID: {}", id);
     }
 
     /**
      * 更新记录
      */
-    public Mono<DnsQueryRecord> updateRecord(Long id, DnsQueryRecord updatedRecord) {
-        log.debug("Updating DNS query record with ID: {}", id);
+    public QueryRecord updateRecord(Long id, QueryRecord updatedRecord) {
+        log.debug("更新DNS查询记录: {}", id);
         return repository.findById(id)
-                .flatMap(existing -> {
+                .map(existing -> {
                     existing.setDomain(updatedRecord.getDomain());
                     existing.setQueryType(updatedRecord.getQueryType());
                     existing.setResponseIp(updatedRecord.getResponseIp());
@@ -94,25 +91,31 @@ public class DnsQueryRecordService {
                     existing.setResponseTimeMs(updatedRecord.getResponseTimeMs());
                     return repository.save(existing);
                 })
-                .doOnSuccess(saved -> log.info("Updated DNS query record with ID: {}", saved.getId()));
+                .orElse(null);
     }
 
     /**
-     * 统计缓存命中率（响应式计算）
+     * 统计缓存命中率
      */
-    public Mono<Double> calculateCacheHitRate() {
-        log.debug("Calculating cache hit rate");
-        Mono<Long> totalCount = repository.count();
-        Mono<Long> hitCount = repository.findByCacheHit(true).count();
+    public double calculateCacheHitRate() {
+        log.debug("计算缓存命中率");
+        long totalCount = repository.count();
+        long hitCount = repository.countByCacheHitTrue();
 
-        return Mono.zip(totalCount, hitCount)
-                .map(tuple -> {
-                    long total = tuple.getT1();
-                    long hits = tuple.getT2();
-                    if (total == 0) return 0.0;
-                    double rate = (double) hits / total * 100;
-                    log.debug("Cache hit rate: {}/{} = {}%", hits, total, rate);
-                    return rate;
-                });
+        if (totalCount == 0) {
+            return 0.0;
+        }
+
+        double rate = (double) hitCount / totalCount;
+        log.debug("缓存命中率: {}/{} = {}%", hitCount, totalCount, rate * 100);
+        return rate;
+    }
+
+    /**
+     * 根据查询类型查询记录
+     */
+    public List<QueryRecord> getRecordsByQueryType(String queryType) {
+        log.debug("根据查询类型查询记录: {}", queryType);
+        return repository.findByQueryType(queryType);
     }
 }

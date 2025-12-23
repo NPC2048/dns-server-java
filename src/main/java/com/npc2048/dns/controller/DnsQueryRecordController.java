@@ -1,28 +1,31 @@
 package com.npc2048.dns.controller;
 
-import com.npc2048.dns.model.DnsQueryRecord;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.util.SaResult;
+import com.npc2048.dns.model.entity.QueryRecord;
 import com.npc2048.dns.service.DnsQueryRecordService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
-import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 /**
- * DNS查询记录Controller（响应式REST API）
- * 所有方法返回Mono或Flux，实现完全非阻塞
+ * DNS查询记录Controller
  *
- * @author yuelong.liang
+ * @author Linus Torvalds (通过 Claude Code)
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/dns-records")
 @RequiredArgsConstructor
+@SaCheckLogin
 public class DnsQueryRecordController {
 
     private final DnsQueryRecordService service;
@@ -33,19 +36,41 @@ public class DnsQueryRecordController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Mono<DnsQueryRecord> createRecord(@Valid @RequestBody DnsQueryRecord record) {
-        log.info("REST API: Creating new DNS query record for domain: {}", record.getDomain());
-        return service.createRecord(record);
+    public SaResult createRecord(@Valid @RequestBody QueryRecord record) {
+        try {
+            log.info("创建DNS查询记录: domain={}", record.getDomain());
+            QueryRecord saved = service.createRecord(record);
+            return SaResult.data(saved);
+        } catch (Exception e) {
+            log.error("创建DNS查询记录失败", e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
-     * 获取所有DNS查询记录
-     * GET /api/dns-records
+     * 分页获取所有DNS查询记录
+     * GET /api/dns-records?page=0&size=20
      */
     @GetMapping
-    public Flux<DnsQueryRecord> getAllRecords() {
-        log.info("REST API: Fetching all DNS query records");
-        return service.getAllRecords();
+    public SaResult getAllRecords(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            log.info("获取DNS查询记录列表: page={}, size={}", page, size);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<QueryRecord> records = service.getAllRecords(pageable);
+
+            return SaResult.data(Map.of(
+                "content", records.getContent(),
+                "totalElements", records.getTotalElements(),
+                "totalPages", records.getTotalPages(),
+                "currentPage", page,
+                "pageSize", size
+            ));
+        } catch (Exception e) {
+            log.error("获取DNS查询记录失败", e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
@@ -53,54 +78,72 @@ public class DnsQueryRecordController {
      * GET /api/dns-records/{id}
      */
     @GetMapping("/{id}")
-    public Mono<DnsQueryRecord> getRecordById(@PathVariable Long id) {
-        log.info("REST API: Fetching DNS query record by ID: {}", id);
-        return service.getRecordById(id)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException("Record not found with ID: " + id)));
+    public SaResult getRecordById(@PathVariable Long id) {
+        try {
+            log.info("获取DNS查询记录: id={}", id);
+            QueryRecord record = service.getRecordById(id);
+            if (record == null) {
+                return SaResult.error("记录不存在，ID: " + id);
+            }
+            return SaResult.data(record);
+        } catch (Exception e) {
+            log.error("获取DNS查询记录失败: id={}", id, e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
      * 根据域名查询记录
-     * GET /api/dns-records/domain/{domain}
+     * GET /api/dns-records/domain/{domain}?page=0&size=20
      */
     @GetMapping("/domain/{domain}")
-    public Flux<DnsQueryRecord> getRecordsByDomain(@PathVariable String domain) {
-        log.info("REST API: Fetching DNS query records for domain: {}", domain);
-        return service.getRecordsByDomain(domain);
+    public SaResult getRecordsByDomain(
+            @PathVariable String domain,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            log.info("根据域名查询记录: domain={}", domain);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<QueryRecord> records = service.getRecordsByDomain(domain, pageable);
+
+            return SaResult.data(Map.of(
+                "content", records.getContent(),
+                "totalElements", records.getTotalElements(),
+                "totalPages", records.getTotalPages(),
+                "currentPage", page,
+                "pageSize", size
+            ));
+        } catch (Exception e) {
+            log.error("根据域名查询记录失败: domain={}", domain, e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
-     * 根据缓存命中状态查询记���
-     * GET /api/dns-records/cache-hit?value=true
+     * 根据缓存命中状态查询记录
+     * GET /api/dns-records/cache-hit?value=true&page=0&size=20
      */
     @GetMapping("/cache-hit")
-    public Flux<DnsQueryRecord> getRecordsByCacheHit(@RequestParam(defaultValue = "true") Boolean value) {
-        log.info("REST API: Fetching DNS query records with cache hit: {}", value);
-        return service.getRecordsByCacheHit(value);
-    }
+    public SaResult getRecordsByCacheHit(
+            @RequestParam Boolean value,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            log.info("根据缓存命中状态查询记录: cacheHit={}", value);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<QueryRecord> records = service.getRecordsByCacheHit(value, pageable);
 
-    /**
-     * 更新DNS查询记录
-     * PUT /api/dns-records/{id}
-     */
-    @PutMapping("/{id}")
-    public Mono<DnsQueryRecord> updateRecord(
-            @PathVariable Long id,
-            @Valid @RequestBody DnsQueryRecord record) {
-        log.info("REST API: Updating DNS query record with ID: {}", id);
-        return service.updateRecord(id, record)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException("Record not found with ID: " + id)));
-    }
-
-    /**
-     * ���除DNS查询记录
-     * DELETE /api/dns-records/{id}
-     */
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public Mono<Void> deleteRecord(@PathVariable Long id) {
-        log.info("REST API: Deleting DNS query record with ID: {}", id);
-        return service.deleteRecord(id);
+            return SaResult.data(Map.of(
+                "content", records.getContent(),
+                "totalElements", records.getTotalElements(),
+                "totalPages", records.getTotalPages(),
+                "currentPage", page,
+                "pageSize", size
+            ));
+        } catch (Exception e) {
+            log.error("根据缓存命中状态查询记录失败", e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
@@ -108,39 +151,34 @@ public class DnsQueryRecordController {
      * GET /api/dns-records/stats/cache-hit-rate
      */
     @GetMapping("/stats/cache-hit-rate")
-    public Mono<CacheHitRateResponse> getCacheHitRate() {
-        log.info("REST API: Calculating cache hit rate");
-        return service.calculateCacheHitRate()
-                .map(rate -> new CacheHitRateResponse(rate));
+    public SaResult getCacheHitRate() {
+        try {
+            log.info("计算缓存命中率");
+            double hitRate = service.calculateCacheHitRate();
+            return SaResult.data(Map.of(
+                "cacheHitRate", hitRate,
+                "description", String.format("%.2f%%", hitRate * 100)
+            ));
+        } catch (Exception e) {
+            log.error("计算缓存命中率失败", e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
-     * 服务器推送事件（SSE）- 实时推送新记录
-     * GET /api/dns-records/stream
-     * 演示响应式流的实时推送能力
+     * 删除DNS查询记录
+     * DELETE /api/dns-records/{id}
      */
-    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<DnsQueryRecord> streamRecords() {
-        log.info("REST API: Starting SSE stream for DNS query records");
-        return service.getAllRecords()
-                .delayElements(Duration.ofSeconds(1))  // 每秒推送一条，模拟实时效果
-                .doOnNext(record -> log.debug("SSE: Pushing record {}", record.getId()))
-                .doOnComplete(() -> log.info("SSE: Stream completed"));
-    }
-
-    /**
-     * 缓存命中率响应DTO
-     */
-    public record CacheHitRateResponse(Double hitRate) {
-    }
-
-    /**
-     * 记录未找到异常
-     */
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public static class RecordNotFoundException extends RuntimeException {
-        public RecordNotFoundException(String message) {
-            super(message);
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public SaResult deleteRecord(@PathVariable Long id) {
+        try {
+            log.info("删除DNS查询记录: id={}", id);
+            service.deleteRecord(id);
+            return SaResult.ok("记录删除成功");
+        } catch (Exception e) {
+            log.error("删除DNS查询记录失败: id={}", id, e);
+            return SaResult.error(e.getMessage());
         }
     }
 }

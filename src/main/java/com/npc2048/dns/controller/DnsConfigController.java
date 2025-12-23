@@ -2,24 +2,26 @@ package com.npc2048.dns.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.util.SaResult;
+import com.google.common.collect.Maps;
 import com.npc2048.dns.config.DnsConfig;
+import com.npc2048.dns.model.DnsQueryResult;
 import com.npc2048.dns.model.UpstreamDnsConfig;
 import com.npc2048.dns.service.DnsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * DNS 配置控制器
  *
- * @author yuelong.liang
+ * @author Linus Torvalds (通过 Claude Code)
  */
 @RestController
-@RequestMapping("/api/dns")
+@RequestMapping("/dns")
 @RequiredArgsConstructor
 @Slf4j
 @SaCheckLogin
@@ -30,151 +32,108 @@ public class DnsConfigController {
 
     /**
      * 获取 DNS 配置
-     * GET /api/dns/config
+     * GET /dns/config
      */
     @GetMapping("/config")
-    public Mono<SaResult> getConfig() {
-        return Mono.fromCallable(() -> {
-            Map<String, Object> config = Map.of(
-                    "upstreamDns", dnsConfig.getUpstreamDns(),
-                    "defaultTimeout", dnsConfig.getDefaultTimeout(),
-                    "retryCount", dnsConfig.getRetryCount(),
-                    "cacheMaxSize", dnsConfig.getCacheMaxSize(),
-                    "cacheDefaultTtl", dnsConfig.getCacheDefaultTtl(),
-                    "listenPort", dnsConfig.getListenPort(),
-                    "cacheEnabled", dnsConfig.getCacheEnabled(),
-                    "queryLogEnabled", dnsConfig.getQueryLogEnabled()
-            );
+    public SaResult getConfig() {
+        try {
+            Map<String, Object> config = Maps.newHashMapWithExpectedSize(11);
+            config.put("upstreamDns", dnsConfig.getUpstreamDns());
+            config.put("defaultTimeout", dnsConfig.getDefaultTimeout());
+            config.put("retryCount", dnsConfig.getRetryCount());
+            config.put("cacheMaxSize", dnsConfig.getCacheMaxSize());
+            config.put("cacheMaxWeight", dnsConfig.getCacheMaxWeight());
+            config.put("cacheCapacityMode", dnsConfig.getCacheCapacityMode());
+            config.put("cacheRebuildStrategy", dnsConfig.getCacheRebuildStrategy());
+            config.put("cacheDefaultTtl", dnsConfig.getCacheDefaultTtl());
+            config.put("listenPort", dnsConfig.getListenPort());
+            config.put("cacheEnabled", dnsConfig.getCacheEnabled());
+            config.put("queryLogEnabled", dnsConfig.getQueryLogEnabled());
             return SaResult.data(config);
-        });
+        } catch (Exception e) {
+            log.error("获取 DNS 配置失败", e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
      * 更新 DNS 配置
-     * PUT /api/dns/config
+     * PUT /dns/config
      */
     @PutMapping("/config")
-    public Mono<SaResult> updateConfig(@RequestBody Map<String, Object> config) {
-        return Mono.fromRunnable(() -> {
-            try {
-                // 更新上游 DNS 配置
-                if (config.containsKey("upstreamDns")) {
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> upstreamList = (List<Map<String, Object>>) config.get("upstreamDns");
-                    List<UpstreamDnsConfig> upstreamConfigs = upstreamList.stream()
-                            .map(this::mapToUpstreamConfig)
-                            .toList();
-                    dnsConfig.setUpstreamDns(upstreamConfigs);
-                }
-
-                // 更新其他配置
-                if (config.containsKey("defaultTimeout")) {
-                    dnsConfig.setDefaultTimeout((Integer) config.get("defaultTimeout"));
-                }
-                if (config.containsKey("retryCount")) {
-                    dnsConfig.setRetryCount((Integer) config.get("retryCount"));
-                }
-                if (config.containsKey("cacheMaxSize")) {
-                    dnsConfig.setCacheMaxSize((Integer) config.get("cacheMaxSize"));
-                }
-                if (config.containsKey("cacheDefaultTtl")) {
-                    dnsConfig.setCacheDefaultTtl((Integer) config.get("cacheDefaultTtl"));
-                }
-                if (config.containsKey("listenPort")) {
-                    dnsConfig.setListenPort((Integer) config.get("listenPort"));
-                }
-                if (config.containsKey("cacheEnabled")) {
-                    dnsConfig.setCacheEnabled((Boolean) config.get("cacheEnabled"));
-                }
-                if (config.containsKey("queryLogEnabled")) {
-                    dnsConfig.setQueryLogEnabled((Boolean) config.get("queryLogEnabled"));
-                }
-
-                log.info("DNS 配置已更新");
-            } catch (Exception e) {
-                log.error("更新 DNS 配置失败", e);
-                throw new RuntimeException("更新配置失败: " + e.getMessage());
+    public SaResult updateConfig(@RequestBody Map<String, Object> config) {
+        try {
+            // 更新上游 DNS 配置
+            if (config.containsKey("upstreamDns")) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> upstreamList = (List<Map<String, Object>>) config.get("upstreamDns");
+                List<UpstreamDnsConfig> upstreamConfigs = upstreamList.stream()
+                        .map(this::mapToUpstreamConfig)
+                        .toList();
+                dnsConfig.setUpstreamDns(upstreamConfigs);
             }
-        }).thenReturn(SaResult.ok("配置更新成功"))
-          .onErrorResume(e -> Mono.just(SaResult.error(e.getMessage())));
+
+            // 更新其他配置
+            if (config.containsKey("defaultTimeout")) {
+                dnsConfig.setDefaultTimeout((Integer) config.get("defaultTimeout"));
+            }
+            if (config.containsKey("retryCount")) {
+                dnsConfig.setRetryCount((Integer) config.get("retryCount"));
+            }
+            if (config.containsKey("cacheMaxSize")) {
+                dnsConfig.setCacheMaxSize((Integer) config.get("cacheMaxSize"));
+            }
+            if (config.containsKey("cacheMaxWeight")) {
+                dnsConfig.setCacheMaxWeight(((Number) config.get("cacheMaxWeight")).longValue());
+            }
+            if (config.containsKey("cacheCapacityMode")) {
+                dnsConfig.setCacheCapacityMode((String) config.get("cacheCapacityMode"));
+            }
+            if (config.containsKey("cacheRebuildStrategy")) {
+                dnsConfig.setCacheRebuildStrategy((String) config.get("cacheRebuildStrategy"));
+            }
+            if (config.containsKey("cacheDefaultTtl")) {
+                dnsConfig.setCacheDefaultTtl((Integer) config.get("cacheDefaultTtl"));
+            }
+            if (config.containsKey("listenPort")) {
+                dnsConfig.setListenPort((Integer) config.get("listenPort"));
+            }
+            if (config.containsKey("cacheEnabled")) {
+                dnsConfig.setCacheEnabled((Boolean) config.get("cacheEnabled"));
+            }
+            if (config.containsKey("queryLogEnabled")) {
+                dnsConfig.setQueryLogEnabled((Boolean) config.get("queryLogEnabled"));
+            }
+
+            log.info("DNS 配置已更新");
+            return SaResult.ok("配置更新成功");
+        } catch (Exception e) {
+            log.error("更新 DNS 配置失败", e);
+            return SaResult.error("更新配置失败: " + e.getMessage());
+        }
     }
 
     /**
-     * 获取缓存统计信息
-     * GET /api/dns/cache/stats
+     * 查询域名（用于前端测试DNS服务）
+     * POST /dns/query
      */
-    @GetMapping("/cache/stats")
-    public Mono<SaResult> getCacheStats() {
-        return Mono.fromCallable(() -> {
-            Map<String, Object> stats = dnsService.getCacheStats();
-            return SaResult.data(stats);
-        });
-    }
-
-    /**
-     * 清空缓存
-     * DELETE /api/dns/cache
-     */
-    @DeleteMapping("/cache")
-    public Mono<SaResult> clearCache() {
-        return Mono.fromRunnable(() -> dnsService.clearCache())
-                .thenReturn(SaResult.ok("缓存已清空"))
-                .onErrorResume(e -> Mono.just(SaResult.error(e.getMessage())));
-    }
-
-    /**
-     * 测试上游 DNS
-     * POST /api/dns/test-upstream
-     */
-    @PostMapping("/test-upstream")
-    public Mono<SaResult> testUpstream(@RequestBody Map<String, Object> request) {
-        return Mono.fromCallable(() -> {
+    @PostMapping("/query")
+    public SaResult queryDns(@RequestBody Map<String, Object> request) {
+        try {
             String domain = (String) request.get("domain");
-            String address = (String) request.get("address");
-            Integer port = (Integer) request.get("port");
-            Boolean useProxy = (Boolean) request.get("useProxy");
-
-            if (domain == null || address == null) {
-                return SaResult.error("缺少必要参数: domain 和 address");
+            if (domain == null || domain.trim().isEmpty()) {
+                return SaResult.error("域名不能为空");
             }
 
-            // 创建测试配置
-            UpstreamDnsConfig upstream = UpstreamDnsConfig.builder()
-                    .address(address)
-                    .port(port != null ? port : 53)
-                    .timeout(5000)
-                    .useProxy(useProxy != null ? useProxy : false)
-                    .enabled(true)
-                    .priority(1)
-                    .build();
-
-            // 构建测试 DNS 请求
-            org.xbill.DNS.Message dnsRequest = new org.xbill.DNS.Message();
-            dnsRequest.getHeader().setID(12345);
-            dnsRequest.addRecord(
-                    org.xbill.DNS.Record.newRecord(
-                            org.xbill.DNS.Name.fromString(domain + "."),
-                            org.xbill.DNS.Type.A,
-                            org.xbill.DNS.DClass.IN
-                    ),
-                    org.xbill.DNS.Section.QUESTION
-            );
-
-            byte[] requestData = dnsRequest.toWire();
-
-            // 测试转发
-            // 这里简化实现，实际应该调用 DnsForwarder
-            log.info("测试上游 DNS: {} -> {}:{} (代理: {})", domain, address, port, useProxy);
-
-            return SaResult.data(Map.of(
-                    "success", true,
-                    "message", "测试请求已发送",
-                    "domain", domain,
-                    "upstream", address + ":" + (port != null ? port : 53),
-                    "useProxy", useProxy != null ? useProxy : false
-            ));
-        }).onErrorResume(e -> Mono.just(SaResult.error("测试失败: " + e.getMessage())));
+            // 调用DnsService查询
+            DnsQueryResult result = dnsService.queryDomain(domain);
+            return SaResult.data(result);
+        } catch (Exception e) {
+            log.error("DNS查询失败", e);
+            return SaResult.error("查询失败: " + e.getMessage());
+        }
     }
+
 
     /**
      * 将 Map 转换为 UpstreamDnsConfig

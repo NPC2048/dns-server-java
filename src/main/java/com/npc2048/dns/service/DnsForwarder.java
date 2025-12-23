@@ -3,7 +3,6 @@ package com.npc2048.dns.service;
 import com.npc2048.dns.model.UpstreamDnsConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;

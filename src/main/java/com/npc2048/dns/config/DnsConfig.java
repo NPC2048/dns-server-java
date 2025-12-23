@@ -44,6 +44,22 @@ public class DnsConfig {
     private Integer cacheMaxSize = 10000;
 
     /**
+     * 缓存最大权重（字符数）
+     *  10M字符
+     */
+    private Long cacheMaxWeight = 10485760L;
+
+    /**
+     * 缓存容量模式：ENTRIES（条目数）或 WEIGHT（权重）
+     */
+    private String cacheCapacityMode = "ENTRIES";
+
+    /**
+     * 缓存重建策略：CLEAR（清空）或 KEEP（保留）
+     */
+    private String cacheRebuildStrategy = "CLEAR";
+
+    /**
      * 缓存默认 TTL（秒）
      */
     private Integer cacheDefaultTtl = 300;

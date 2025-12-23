@@ -7,7 +7,7 @@ import com.npc2048.dns.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Mono;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 认证控制器
@@ -19,6 +19,7 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Slf4j
+@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
 public class AuthController {
 
     private final AuthService authService;
@@ -28,10 +29,13 @@ public class AuthController {
      * POST /api/auth/login
      */
     @PostMapping("/login")
-    public Mono<SaResult> login(@RequestBody LoginRequest request) {
-        return authService.login(request)
-                .map(SaResult::data)
-                .onErrorResume(e -> Mono.just(SaResult.error(e.getMessage())));
+    public SaResult login(HttpServletRequest request, @RequestBody LoginRequest loginRequest) {
+        try {
+            return SaResult.data(authService.login(request, loginRequest));
+        } catch (Exception e) {
+            log.error("登录失败", e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
@@ -40,10 +44,14 @@ public class AuthController {
      */
     @PostMapping("/logout")
     @SaCheckLogin
-    public Mono<SaResult> logout() {
-        return authService.logout()
-                .thenReturn(SaResult.ok("登出成功"))
-                .onErrorResume(e -> Mono.just(SaResult.error(e.getMessage())));
+    public SaResult logout() {
+        try {
+            authService.logout();
+            return SaResult.ok("登出成功");
+        } catch (Exception e) {
+            log.error("登出失败", e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
@@ -52,10 +60,13 @@ public class AuthController {
      */
     @GetMapping("/current")
     @SaCheckLogin
-    public Mono<SaResult> getCurrentUser() {
-        return authService.getCurrentUser()
-                .map(SaResult::data)
-                .onErrorResume(e -> Mono.just(SaResult.error(e.getMessage())));
+    public SaResult getCurrentUser() {
+        try {
+            return SaResult.data(authService.getCurrentUser());
+        } catch (Exception e) {
+            log.error("获取当前用户失败", e);
+            return SaResult.error(e.getMessage());
+        }
     }
 
     /**
@@ -63,7 +74,7 @@ public class AuthController {
      * GET /api/auth/health
      */
     @GetMapping("/health")
-    public Mono<SaResult> health() {
-        return Mono.just(SaResult.ok("认证服务正常"));
+    public SaResult health() {
+        return SaResult.ok("认证服务正常");
     }
 }
