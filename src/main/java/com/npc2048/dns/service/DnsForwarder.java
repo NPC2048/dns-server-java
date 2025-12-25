@@ -1,5 +1,6 @@
 package com.npc2048.dns.service;
 
+import com.npc2048.dns.config.Constants;
 import com.npc2048.dns.model.UpstreamDnsConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -73,11 +74,11 @@ public class DnsForwarder {
         try {
             // 创建 UDP socket
             socket = new DatagramSocket();
-            socket.setSoTimeout(upstream.getTimeout() != null ? upstream.getTimeout() : 5000);
+            socket.setSoTimeout(upstream.getTimeout() != null ? upstream.getTimeout() : Constants.DEFAULT_UPSTREAM_TIMEOUT);
 
             // 准备请求数据包
             InetAddress address = InetAddress.getByName(upstream.getAddress());
-            int port = upstream.getPort() != null ? upstream.getPort() : 53;
+            int port = upstream.getPort() != null ? upstream.getPort() : Constants.DEFAULT_DNS_PORT;
             DatagramPacket requestPacket = new DatagramPacket(
                     requestData, requestData.length,
                     address, port
@@ -87,7 +88,7 @@ public class DnsForwarder {
             socket.send(requestPacket);
 
             // 接收响应
-            byte[] buffer = new byte[512];
+            byte[] buffer = new byte[Constants.UDP_BUFFER_SIZE];
             DatagramPacket responsePacket = new DatagramPacket(buffer, buffer.length);
             socket.receive(responsePacket);
 
@@ -151,7 +152,7 @@ public class DnsForwarder {
             String host = proxyConfig.getHost();
             int port = proxyConfig.getPort() != null ? proxyConfig.getPort() : 0;
 
-            if (port <= 0 || port > 65535) {
+            if (port <= 0 || port > Constants.MAX_PORT_VALUE) {
                 log.warn("代理端口无效: {}", port);
                 return null;
             }

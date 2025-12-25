@@ -1,5 +1,8 @@
 package com.npc2048.dns.service;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.npc2048.dns.model.CacheEntry;
+
 /**
  * DNS缓存服务接口
  *
@@ -18,11 +21,11 @@ public interface CacheService {
     /**
      * 存储缓存
      *
-     * @param key 缓存键
-     * @param data 缓存数据
-     * @param ttl 生存时间（秒）
+     * @param key  缓存键
+     * @param data dns缓存数据
+     * @return ttl
      */
-    void put(String key, byte[] data, int ttl);
+    int put(String key, byte[] data);
 
     /**
      * 删除缓存
@@ -51,30 +54,14 @@ public interface CacheService {
     CacheStats getStats();
 
     /**
+     * 获取缓存
+     */
+    Cache<String, CacheEntry> getCache();
+
+    /**
      * 缓存统计信息
      */
-    class CacheStats {
-        private final long hits;
-        private final long misses;
-        private final long size;
-
-        public CacheStats(long hits, long misses, long size) {
-            this.hits = hits;
-            this.misses = misses;
-            this.size = size;
-        }
-
-        public long getHits() {
-            return hits;
-        }
-
-        public long getMisses() {
-            return misses;
-        }
-
-        public long getSize() {
-            return size;
-        }
+    record CacheStats(long hits, long misses, long size) {
 
         public double getHitRate() {
             long total = hits + misses;

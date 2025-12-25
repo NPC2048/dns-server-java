@@ -1,5 +1,6 @@
 package com.npc2048.dns.service;
 
+import com.npc2048.dns.config.Constants;
 import com.npc2048.dns.config.DnsConfig;
 import com.npc2048.dns.model.DnsQueryResult;
 import com.npc2048.dns.model.UpstreamDnsConfig;
@@ -11,6 +12,8 @@ import org.xbill.DNS.*;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+
+import static com.npc2048.dns.common.util.DnsUtils.extractTtl;
 
 /**
  * DNS service
@@ -25,7 +28,7 @@ public class DnsService {
     private final DnsConfig dnsConfig;
     private final DnsQueryRecordService dnsQueryRecordService;
     private final DnsForwarder dnsForwarder;
-    private final CacheService cacheService; // 需要添加缓存服务
+    private final CacheService cacheService;
 
     /**
      * Handle DNS query (with caching)
@@ -40,12 +43,22 @@ public class DnsService {
 
         try {
             // 1. 检查缓存
+            log.debug("查询域名:{}", domain);
             String cacheKey = domain + ":" + Type.string(type);
             byte[] cachedResponse = cacheService.get(cacheKey);
             if (cachedResponse != null) {
-                log.debug("缓存命中: {}", domain);
+                log.debug("缓存命中: {}, 耗时: {}ms", domain, System.currentTimeMillis() - startTime);
                 recordQueryAsync(domain, type, true, startTime);
-                return cachedResponse;
+                // --- 核心修复：修改 Transaction ID ---
+                // DNS 报文的前两个字节是 ID，必须与请求报文一致
+                // 克隆一份，避免污染缓存池中的原始数据
+                byte[] responseToReturn = cachedResponse.clone();
+                if (requestData.length >= 2 && responseToReturn.length >= 2) {
+                    responseToReturn[0] = requestData[0];
+                    responseToReturn[1] = requestData[1];
+                }
+
+                return responseToReturn;
             }
 
             // 2. Select upstream DNS and forward query
@@ -60,43 +73,21 @@ public class DnsService {
 
             if (responseData != null && responseData.length > 0) {
                 // 4. Cache result
-                int ttl = extractTtl(responseData);
-                if (ttl > 0) {
-                    cacheService.put(cacheKey, responseData, ttl);
-                }
-
-                log.debug("Query successful: {} TTL: {}s", domain, ttl);
+                int ttl = cacheService.put(cacheKey, responseData);
+                log.debug("Query successful: {} TTL: {}s, 耗时: {}ms", domain, ttl, System.currentTimeMillis() - startTime);
             } else {
                 log.warn("Received empty response from upstream DNS: {}", domain);
             }
 
             // 5. Async record query log
             recordQueryAsync(domain, type, false, startTime);
-
+            log.debug("响应: {}", responseData != null ? responseData : buildServFailResponse(requestData));
             return responseData != null ? responseData : buildServFailResponse(requestData);
 
         } catch (Exception e) {
             log.error("处理 DNS 查询失败: {}", domain, e);
             recordQueryAsync(domain, type, false, startTime);
             return buildServFailResponse(requestData);
-        }
-    }
-
-    /**
-     * Extract TTL value
-     */
-    private int extractTtl(byte[] responseData) {
-        try {
-            Message response = new Message(responseData);
-            List<org.xbill.DNS.Record> answers = response.getSection(Section.ANSWER);
-
-            if (answers != null && !answers.isEmpty()) {
-                return (int) answers.get(0).getTTL();
-            }
-            return 300; // Default 5 minutes
-        } catch (Exception e) {
-            log.warn("Failed to extract TTL, using default value", e);
-            return 300;
         }
     }
 
@@ -177,7 +168,7 @@ public class DnsService {
         try {
             // Build DNS request
             Message dnsRequest = new Message();
-            dnsRequest.getHeader().setID(12345);
+            dnsRequest.getHeader().setID(Constants.DNS_REQUEST_ID);
             dnsRequest.addRecord(
                     org.xbill.DNS.Record.newRecord(
                             Name.fromString(domain + "."),
@@ -231,7 +222,7 @@ public class DnsService {
 
             // If minTtl is still MAX_VALUE, use default TTL
             if (minTtl == Integer.MAX_VALUE) {
-                minTtl = 300; // Default 5 minutes
+                minTtl = Constants.CACHE_DEFAULT_TTL; // Default 5 minutes
             }
 
             return DnsQueryResult.builder()

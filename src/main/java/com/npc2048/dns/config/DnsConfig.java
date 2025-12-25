@@ -31,51 +31,51 @@ public class DnsConfig {
     /**
      * 默认上游 DNS 超时时间（毫秒）
      */
-    private Integer defaultTimeout = 5000;
+    private Integer defaultTimeout = Constants.DEFAULT_UPSTREAM_TIMEOUT;
 
     /**
      * 重试次数
      */
-    private Integer retryCount = 3;
+    private Integer retryCount = Constants.RETRY_COUNT;
 
     /**
      * 缓存最大条目数
      */
-    private Integer cacheMaxSize = 10000;
+    private Integer cacheMaxSize = Constants.CACHE_MAX_SIZE;
 
     /**
      * 缓存最大权重（字符数）
      *  10M字符
      */
-    private Long cacheMaxWeight = 10485760L;
+    private Long cacheMaxWeight = Constants.CACHE_MAX_WEIGHT;
 
     /**
      * 缓存容量模式：ENTRIES（条目数）或 WEIGHT（权重）
      */
-    private String cacheCapacityMode = "ENTRIES";
+    private String cacheCapacityMode = Constants.CACHE_CAPACITY_ENTRIES;
 
     /**
      * 缓存重建策略：CLEAR（清空）或 KEEP（保留）
      */
-    private String cacheRebuildStrategy = "CLEAR";
+    private String cacheRebuildStrategy = Constants.CACHE_REBUILD_CLEAR;
 
     /**
      * 缓存默认 TTL（秒）
      */
-    private Integer cacheDefaultTtl = 300;
+    private Integer cacheDefaultTtl = Constants.CACHE_DEFAULT_TTL;
 
     /**
      * 监听端口
      */
-    private Integer listenPort = 53;
+    private Integer listenPort = Constants.DEFAULT_DNS_PORT;
 
     /**
      * 是否启用缓存
      */
-    private Boolean cacheEnabled = true;
+    private Boolean cacheEnabled = Constants.CACHE_ENABLED;
 
     /**
      * 是否启用查询日志
      */
-    private Boolean queryLogEnabled = true;
+    private Boolean queryLogEnabled = Constants.QUERY_LOG_ENABLED;
 }

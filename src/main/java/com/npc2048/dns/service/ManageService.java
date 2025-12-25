@@ -45,7 +45,7 @@ public class ManageService {
     public void updateAuthConfig(AuthConfigUpdateRequest request) {
         checkAdmin();
 
-        // 更新DNS查询鉴权配置
+        // 更新 DNS 查询鉴权配置
         if (request.getRequireForDnsQueries() != null) {
             boolean oldValue = authConfig.isRequireForDnsQueries();
             boolean newValue = request.getRequireForDnsQueries();

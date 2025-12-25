@@ -16,17 +16,16 @@ import jakarta.servlet.http.HttpServletRequest;
  * @author Linus Torvalds (通过 Claude Code)
  */
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
 public class AuthController {
 
     private final AuthService authService;
 
     /**
      * 用户登录
-     * POST /api/auth/login
+     * POST /auth/login
      */
     @PostMapping("/login")
     public SaResult login(HttpServletRequest request, @RequestBody LoginRequest loginRequest) {
@@ -40,7 +39,7 @@ public class AuthController {
 
     /**
      * 用户登出
-     * POST /api/auth/logout
+     * POST /auth/logout
      */
     @PostMapping("/logout")
     @SaCheckLogin
@@ -56,7 +55,7 @@ public class AuthController {
 
     /**
      * 获取当前用户信息
-     * GET /api/auth/current
+     * GET /auth/current
      */
     @GetMapping("/current")
     @SaCheckLogin
@@ -71,7 +70,7 @@ public class AuthController {
 
     /**
      * 健康检查（无需鉴权）
-     * GET /api/auth/health
+     * GET /auth/health
      */
     @GetMapping("/health")
     public SaResult health() {
