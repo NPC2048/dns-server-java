@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ConfigEntity {
+public class DnsConfig {
 
     /**
      * 配置键（主键）

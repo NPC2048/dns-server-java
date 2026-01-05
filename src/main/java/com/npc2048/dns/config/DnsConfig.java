@@ -67,7 +67,7 @@ public class DnsConfig {
     /**
      * 监听端口
      */
-    private Integer listenPort = Constants.DEFAULT_DNS_PORT;
+    private Integer listenPort = Constants.DNS_SERVER_PORT;
 
     /**
      * 是否启用缓存

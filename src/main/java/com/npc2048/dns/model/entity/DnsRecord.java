@@ -8,17 +8,17 @@ import lombok.NoArgsConstructor;
 
 /**
  * H2查询记录实体类
- * 对应 dns_queries 表
+ * 对应 dns_record 表
  *
  * @author Linus Torvalds (通过 Claude Code)
  */
 @Entity
-@Table(name = "dns_queries")
+@Table(name = "dns_record")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class QueryRecord {
+public class DnsRecord {
 
     /**
      * 主键ID

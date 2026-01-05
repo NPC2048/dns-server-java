@@ -2,7 +2,7 @@ package com.npc2048.dns.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.util.SaResult;
-import com.npc2048.dns.model.entity.QueryRecord;
+import com.npc2048.dns.model.entity.DnsRecord;
 import com.npc2048.dns.service.DnsQueryRecordService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,10 +36,10 @@ public class DnsQueryRecordController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public SaResult createRecord(@Valid @RequestBody QueryRecord record) {
+    public SaResult createRecord(@Valid @RequestBody DnsRecord record) {
         try {
             log.info("创建DNS查询记录: domain={}", record.getDomain());
-            QueryRecord saved = service.createRecord(record);
+            DnsRecord saved = service.createRecord(record);
             return SaResult.data(saved);
         } catch (Exception e) {
             log.error("创建DNS查询记录失败", e);
@@ -58,7 +58,7 @@ public class DnsQueryRecordController {
         try {
             log.info("获取DNS查询记录列表: page={}, size={}", page, size);
             Pageable pageable = PageRequest.of(page, size);
-            Page<QueryRecord> records = service.getAllRecords(pageable);
+            Page<DnsRecord> records = service.getAllRecords(pageable);
 
             return SaResult.data(Map.of(
                 "content", records.getContent(),
@@ -81,7 +81,7 @@ public class DnsQueryRecordController {
     public SaResult getRecordById(@PathVariable Long id) {
         try {
             log.info("获取DNS查询记录: id={}", id);
-            QueryRecord record = service.getRecordById(id);
+            DnsRecord record = service.getRecordById(id);
             if (record == null) {
                 return SaResult.error("记录不存在，ID: " + id);
             }
@@ -104,7 +104,7 @@ public class DnsQueryRecordController {
         try {
             log.info("根据域名查询记录: domain={}", domain);
             Pageable pageable = PageRequest.of(page, size);
-            Page<QueryRecord> records = service.getRecordsByDomain(domain, pageable);
+            Page<DnsRecord> records = service.getRecordsByDomain(domain, pageable);
 
             return SaResult.data(Map.of(
                 "content", records.getContent(),
@@ -131,7 +131,7 @@ public class DnsQueryRecordController {
         try {
             log.info("根据缓存命中状态查询记录: cacheHit={}", value);
             Pageable pageable = PageRequest.of(page, size);
-            Page<QueryRecord> records = service.getRecordsByCacheHit(value, pageable);
+            Page<DnsRecord> records = service.getRecordsByCacheHit(value, pageable);
 
             return SaResult.data(Map.of(
                 "content", records.getContent(),

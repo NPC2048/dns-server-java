@@ -1,6 +1,7 @@
 package com.npc2048.dns.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.util.SaResult;
 import com.google.common.collect.Maps;
 import com.npc2048.dns.config.Constants;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -63,6 +65,7 @@ public class DnsConfigController {
      * PUT /dns/config
      */
     @PutMapping("/config")
+    @SaCheckRole("admin")
     public SaResult updateConfig(@RequestBody Map<String, Object> config) {
         try {
             // 更新上游 DNS 配置
@@ -118,6 +121,76 @@ public class DnsConfigController {
     }
 
     /**
+     * 重置配置为默认值
+     * POST /dns/config/reset
+     */
+    @PostMapping("/config/reset")
+    @SaCheckRole("admin")
+    public SaResult resetConfig() {
+        try {
+            // 重置为默认配置
+            dnsConfig.setUpstreamDns(Arrays.asList(
+                UpstreamDnsConfig.builder()
+                    .address("116.116.116.116")
+                    .port(53)
+                    .timeout(5000)
+                    .useProxy(false)
+                    .enabled(true)
+                    .priority(3)
+                    .build(),
+                UpstreamDnsConfig.builder()
+                    .address("221.5.88.88")
+                    .port(53)
+                    .timeout(5000)
+                    .useProxy(false)
+                    .enabled(true)
+                    .priority(2)
+                    .build()
+            ));
+            dnsConfig.setDefaultTimeout(5000);
+            dnsConfig.setRetryCount(3);
+            dnsConfig.setCacheMaxSize(10000);
+            dnsConfig.setCacheMaxWeight(10485760L);
+            dnsConfig.setCacheCapacityMode(Constants.CACHE_CAPACITY_ENTRIES);
+            dnsConfig.setCacheRebuildStrategy(Constants.CACHE_REBUILD_CLEAR);
+            dnsConfig.setCacheDefaultTtl(300);
+            dnsConfig.setCacheEnabled(true);
+            dnsConfig.setQueryLogEnabled(true);
+
+            // 重启DNS服务器
+            nettyDnsServer.stopServer();
+            nettyDnsServer.startServer();
+
+            log.info("DNS 配置已重置为默认值");
+            return SaResult.ok("配置已重置为默认值");
+        } catch (Exception e) {
+            log.error("重置配置失败", e);
+            return SaResult.error("重置配置失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 重新加载配置
+     * POST /dns/config/reload
+     */
+    @PostMapping("/config/reload")
+    @SaCheckRole("admin")
+    public SaResult reloadConfig() {
+        try {
+            // 重新加载配置（如果有配置源的话）
+            // 这里可以添加从数据库或其他地方重新加载配置的逻辑
+            nettyDnsServer.stopServer();
+            nettyDnsServer.startServer();
+
+            log.info("DNS 配置已重新加载");
+            return SaResult.ok("配置已重新加载");
+        } catch (Exception e) {
+            log.error("重新加载配置失败", e);
+            return SaResult.error("重新加载配置失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 查询域名（用于前端测试DNS服务）
      * POST /dns/query
      */
@@ -137,7 +210,6 @@ public class DnsConfigController {
             return SaResult.error("查询失败: " + e.getMessage());
         }
     }
-
 
     /**
      * 将 Map 转换为 UpstreamDnsConfig

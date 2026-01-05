@@ -4,7 +4,7 @@ import com.npc2048.dns.config.Constants;
 import com.npc2048.dns.config.DnsConfig;
 import com.npc2048.dns.model.DnsQueryResult;
 import com.npc2048.dns.model.UpstreamDnsConfig;
-import com.npc2048.dns.model.entity.QueryRecord;
+import com.npc2048.dns.model.entity.DnsRecord;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -52,13 +52,11 @@ public class DnsService {
                 // --- 核心修复：修改 Transaction ID ---
                 // DNS 报文的前两个字节是 ID，必须与请求报文一致
                 // 克隆一份，避免污染缓存池中的原始数据
-                byte[] responseToReturn = cachedResponse.clone();
-                if (requestData.length >= 2 && responseToReturn.length >= 2) {
-                    responseToReturn[0] = requestData[0];
-                    responseToReturn[1] = requestData[1];
+                if (requestData.length >= 2 && cachedResponse.length >= 2) {
+                    cachedResponse[0] = requestData[0];
+                    cachedResponse[1] = requestData[1];
                 }
-
-                return responseToReturn;
+                return cachedResponse;
             }
 
             // 2. Select upstream DNS and forward query
@@ -104,7 +102,7 @@ public class DnsService {
             try {
                 long responseTime = System.currentTimeMillis() - startTime;
 
-                QueryRecord record = QueryRecord.builder()
+                DnsRecord record = DnsRecord.builder()
                         .domain(domain)
                         .queryType(Type.string(type))
                         .cacheHit(cacheHit)

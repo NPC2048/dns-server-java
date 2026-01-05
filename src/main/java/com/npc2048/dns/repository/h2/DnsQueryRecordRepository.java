@@ -1,6 +1,6 @@
 package com.npc2048.dns.repository.h2;
 
-import com.npc2048.dns.model.entity.QueryRecord;
+import com.npc2048.dns.model.entity.DnsRecord;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,32 +16,32 @@ import java.util.List;
  * @author Linus Torvalds (通过 Claude Code)
  */
 @Repository
-public interface DnsQueryRecordRepository extends JpaRepository<QueryRecord, Long> {
+public interface DnsQueryRecordRepository extends JpaRepository<DnsRecord, Long> {
 
     /**
      * 根据域名查询记录
      */
-    List<QueryRecord> findByDomain(String domain);
+    List<DnsRecord> findByDomain(String domain);
 
     /**
      * 查询缓存命中的记录
      */
-    Page<QueryRecord> findByCacheHit(Boolean cacheHit, Pageable pageable);
+    Page<DnsRecord> findByCacheHit(Boolean cacheHit, Pageable pageable);
 
     /**
      * 根据查询类型查询记录
      */
-    List<QueryRecord> findByQueryType(String queryType);
+    List<DnsRecord> findByQueryType(String queryType);
 
     /**
      * 分页查询所有记录
      */
-    Page<QueryRecord> findAllByOrderByQueryTimeDesc(Pageable pageable);
+    Page<DnsRecord> findAllByOrderByQueryTimeDesc(Pageable pageable);
 
     /**
      * 查找指定域名的查询记录，并分页
      */
-    Page<QueryRecord> findByDomainContainingOrderByQueryTimeDesc(String domain, Pageable pageable);
+    Page<DnsRecord> findByDomainContainingOrderByQueryTimeDesc(String domain, Pageable pageable);
 
     /**
      * 统计查询总数
@@ -56,6 +56,6 @@ public interface DnsQueryRecordRepository extends JpaRepository<QueryRecord, Lon
     /**
      * 根据查询类型分页查询记录
      */
-    @Query("SELECT r FROM QueryRecord r WHERE r.queryType = :queryType ORDER BY r.queryTime DESC")
-    Page<QueryRecord> findByQueryTypeOrderByQueryTimeDesc(@Param("queryType") String queryType, Pageable pageable);
+    @Query("SELECT r FROM DnsRecord r WHERE r.queryType = :queryType ORDER BY r.queryTime DESC")
+    Page<DnsRecord> findByQueryTypeOrderByQueryTimeDesc(@Param("queryType") String queryType, Pageable pageable);
 }

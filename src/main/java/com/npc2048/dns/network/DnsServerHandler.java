@@ -31,7 +31,7 @@ public class DnsServerHandler extends SimpleChannelInboundHandler<DatagramPacket
             byte[] requestData = new byte[content.readableBytes()];
             content.readBytes(requestData);
 
-            // 解析DNS请求
+            // 解析 DNS 请求
             Message dnsQuery = new Message(requestData);
             org.xbill.DNS.Record question = dnsQuery.getQuestion();
 

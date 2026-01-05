@@ -1,6 +1,6 @@
 package com.npc2048.dns.service;
 
-import com.npc2048.dns.model.entity.ConfigEntity;
+import com.npc2048.dns.model.entity.DnsConfig;
 import com.npc2048.dns.repository.h2.ConfigEntityRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ConfigService {
+public class DnsConfigService {
 
     private final ConfigEntityRepository repository;
 
@@ -24,25 +24,25 @@ public class ConfigService {
      */
     public String getConfig(String key) {
         return repository.findById(key)
-                .map(ConfigEntity::getValue)
+                .map(DnsConfig::getValue)
                 .orElse(null);
     }
 
     /**
      * 获取配置实体
      */
-    public ConfigEntity getConfigEntity(String key) {
+    public DnsConfig getConfigEntity(String key) {
         return repository.findById(key).orElse(null);
     }
 
     /**
      * 保存配置
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void saveConfig(String key, String value) {
-        ConfigEntity entity = repository.findById(key).orElse(null);
+        DnsConfig entity = repository.findById(key).orElse(null);
         if (entity == null) {
-            entity = ConfigEntity.builder()
+            entity = DnsConfig.builder()
                     .key(key)
                     .value(value)
                     .updatedTime(System.currentTimeMillis() / 1000)
@@ -58,7 +58,7 @@ public class ConfigService {
     /**
      * 删除配置
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteConfig(String key) {
         repository.deleteById(key);
         log.info("配置已删除: {}", key);

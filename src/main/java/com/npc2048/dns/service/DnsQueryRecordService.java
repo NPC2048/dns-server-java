@@ -1,12 +1,13 @@
 package com.npc2048.dns.service;
 
-import com.npc2048.dns.model.entity.QueryRecord;
+import com.npc2048.dns.model.entity.DnsRecord;
 import com.npc2048.dns.repository.h2.DnsQueryRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -26,12 +27,13 @@ public class DnsQueryRecordService {
     /**
      * 创建新的查询记录
      */
-    public QueryRecord createRecord(QueryRecord record) {
+    @Transactional(rollbackFor = Exception.class)
+    public DnsRecord createRecord(DnsRecord record) {
         if (record.getQueryTime() == null) {
             record.setQueryTime(Instant.now().toEpochMilli());
         }
         log.debug("创建DNS查询记录: {}", record.getDomain());
-        QueryRecord saved = repository.save(record);
+        DnsRecord saved = repository.save(record);
         log.info("保存DNS查询记录成功，ID: {}", saved.getId());
         return saved;
     }
@@ -39,7 +41,7 @@ public class DnsQueryRecordService {
     /**
      * 分页查询所有记录
      */
-    public Page<QueryRecord> getAllRecords(Pageable pageable) {
+    public Page<DnsRecord> getAllRecords(Pageable pageable) {
         log.debug("获取所有DNS查询记录");
         return repository.findAllByOrderByQueryTimeDesc(pageable);
     }
@@ -47,7 +49,7 @@ public class DnsQueryRecordService {
     /**
      * 根据ID查询单条记录
      */
-    public QueryRecord getRecordById(Long id) {
+    public DnsRecord getRecordById(Long id) {
         log.debug("根据ID查询DNS记录: {}", id);
         return repository.findById(id).orElse(null);
     }
@@ -55,7 +57,7 @@ public class DnsQueryRecordService {
     /**
      * 根据域名查询记录
      */
-    public Page<QueryRecord> getRecordsByDomain(String domain, Pageable pageable) {
+    public Page<DnsRecord> getRecordsByDomain(String domain, Pageable pageable) {
         log.debug("根据域名查询记录: {}", domain);
         return repository.findByDomainContainingOrderByQueryTimeDesc(domain, pageable);
     }
@@ -63,7 +65,7 @@ public class DnsQueryRecordService {
     /**
      * 根据缓存命中状态查询记录
      */
-    public Page<QueryRecord> getRecordsByCacheHit(Boolean cacheHit, Pageable pageable) {
+    public Page<DnsRecord> getRecordsByCacheHit(Boolean cacheHit, Pageable pageable) {
         log.debug("根据缓存命中状态查询记录: {}", cacheHit);
         return repository.findByCacheHit(cacheHit, pageable);
     }
@@ -80,7 +82,7 @@ public class DnsQueryRecordService {
     /**
      * 更新记录
      */
-    public QueryRecord updateRecord(Long id, QueryRecord updatedRecord) {
+    public DnsRecord updateRecord(Long id, DnsRecord updatedRecord) {
         log.debug("更新DNS查询记录: {}", id);
         return repository.findById(id)
                 .map(existing -> {
@@ -114,7 +116,7 @@ public class DnsQueryRecordService {
     /**
      * 根据查询类型查询记录
      */
-    public List<QueryRecord> getRecordsByQueryType(String queryType) {
+    public List<DnsRecord> getRecordsByQueryType(String queryType) {
         log.debug("根据查询类型查询记录: {}", queryType);
         return repository.findByQueryType(queryType);
     }
